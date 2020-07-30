@@ -10,7 +10,7 @@ exclude = [".gitignore"]
 
 [dependencies]
 # Substrate
-sp-std = { git = "https://github.com/paritytech/substrate", default-features = false, tag = "v2.0.0-rc4"  }
+sp-std = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "at-add-dispatch-call" }
 codec = { package = "parity-scale-codec", version = "1.2.0", default-features = false, features = ["derive"] }
 
 # Common
