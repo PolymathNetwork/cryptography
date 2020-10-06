@@ -43,22 +43,33 @@
 
 use super::pedersen_commitments::PedersenGenerators;
 use curve25519_dalek::{ristretto::RistrettoPoint, scalar::Scalar};
+use lazy_static::lazy_static;
+#[cfg(feature = "runtime-benchmarks")]
 use merlin::Transcript;
+#[cfg(feature = "runtime-benchmarks")]
 use rand_chacha::ChaChaRng;
-use rand_core::SeedableRng;
-use schnorrkel::{context::SigningTranscriptWithRng, Keypair, PublicKey, Signature};
+#[cfg(feature = "runtime-benchmarks")]
+use schnorrkel::context::SigningTranscriptWithRng;
+use schnorrkel::{context::SigningContext, signing_context, Keypair, PublicKey, Signature};
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 use sp_std::prelude::*;
 
 /// Signing context.
 const SIGNING_CTX: &[u8] = b"PolymathClaimProofs";
+lazy_static! {
+    static ref SIG_CTXT: SigningContext = signing_context(SIGNING_CTX);
+}
+
+#[cfg(feature = "runtime-benchmarks")]
 const MESSAGE_LABEL: &[u8] = b"PolymathMessageBytes";
 
+#[cfg(feature = "runtime-benchmarks")]
 /// Make a signing transcript from the message.
 /// Use ChaCha20 as the PRNG instead of defaulting to the OS RNG. This has to be done
 /// to support platforms that do not provide an OS RNG, e.g. WASM.
 fn make_signing_transcript(message: &[u8]) -> SigningTranscriptWithRng<Transcript, ChaChaRng> {
+    use rand_core::SeedableRng;
     let mut t = Transcript::new(SIGNING_CTX);
     t.append_message(MESSAGE_LABEL, message);
     let csprng = ChaChaRng::from_seed([0u8; 32]); // DANGER
@@ -235,6 +246,9 @@ impl ProofKeyPair {
     /// # Output
     /// A proof in the form of an Schnorrkel/Ristretto x25519 signature.
     pub fn generate_id_match_proof(&self, message: &[u8]) -> Signature {
+        #[cfg(not(feature = "runtime-benchmarks"))]
+        return self.keypair.sign(SIG_CTXT.bytes(message));
+        #[cfg(feature = "runtime-benchmarks")]
         self.keypair.sign(make_signing_transcript(message))
     }
 }
@@ -275,7 +289,7 @@ impl ProofPublicKey {
     /// `true` on a successful verification, `false` otherwise.
     pub fn verify_id_match_proof(&self, message: &[u8], sig: &Signature) -> bool {
         self.pub_key
-            .verify(make_signing_transcript(message), sig)
+            .verify_simple(SIGNING_CTX, message, sig)
             .is_ok()
     }
 }

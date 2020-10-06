@@ -93,6 +93,8 @@ std = [
 	"failure/std",
 ]
 
+runtime-benchmarks = []
+
 [[bench]]
 name = "elgamal_decryption"
 harness = false
