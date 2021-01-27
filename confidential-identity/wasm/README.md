@@ -11,7 +11,7 @@ you can build the wasm bindings using
 # If your active toolchain is stable, then run
 rustup run nightly wasm-pack build --release
 
-# If your active toolchain is nightl, then you can use the simpler version and run
+# If your active toolchain is nightly, then you can use the simpler version and run
 wasm-pack build --release
 ```
 

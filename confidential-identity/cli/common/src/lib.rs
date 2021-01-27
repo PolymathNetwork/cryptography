@@ -1,4 +1,5 @@
 use blake2::{Blake2s, Digest};
+use confidential_identity::CddId;
 use curve25519_dalek::ristretto::RistrettoPoint;
 use serde::{Deserialize, Serialize};
 
@@ -16,7 +17,7 @@ pub const UNIQUEID_LEN: usize = 16;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Proof {
-    pub cdd_id: RistrettoPoint,
+    pub cdd_id: CddId,
     pub investor_did: InvestorDID,
     pub scope_id: RistrettoPoint,
     pub scope_did: ScopeDID,

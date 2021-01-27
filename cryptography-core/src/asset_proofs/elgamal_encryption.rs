@@ -124,7 +124,7 @@ impl Decode for CipherText {
 }
 
 // ------------------------------------------------------------------------
-// Arithmetic operations on the cipher text.
+// Arithmetic operations on the ciphertext.
 // ------------------------------------------------------------------------
 
 impl<'a, 'b> Add<&'b CipherText> for &'a CipherText {

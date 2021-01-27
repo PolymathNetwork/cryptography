@@ -5,8 +5,8 @@ use crate::{
     Proofs, ProverFinalResponse, Verifier, VerifierSecrets, VerifierSetGenerator,
     SET_SIZE_ANONYMITY_PARAM,
 };
-use cryptography_core::cdd_claim::pedersen_commitments::PedersenGenerators;
-use cryptography_core::curve25519_dalek::{ristretto::RistrettoPoint, scalar::Scalar};
+use cryptography_core::cdd_claim::{pedersen_commitments::PedersenGenerators, CddId};
+use cryptography_core::curve25519_dalek::scalar::Scalar;
 use rand::seq::SliceRandom;
 use rand_core::{CryptoRng, RngCore};
 use uuid::{Builder, Uuid, Variant, Version};
@@ -24,15 +24,15 @@ impl ChallengeGenerator for VerifierSetGenerator {
             SET_SIZE_ANONYMITY_PARAM
         };
 
-        let padded_vec = if private_unique_identifiers.len() >= min_size {
-            private_unique_identifiers
+        let padded_vec = if private_unique_identifiers.0.len() >= min_size {
+            private_unique_identifiers.0
         } else {
             let padding: Vec<Scalar> =
-                gen_random_uuids(min_size - private_unique_identifiers.len(), rng)
+                gen_random_uuids(min_size - private_unique_identifiers.0.len(), rng)
                     .into_iter()
                     .map(uuid_to_scalar)
                     .collect();
-            [&private_unique_identifiers[..], &padding[..]].concat()
+            [&private_unique_identifiers.0[..], &padding[..]].concat()
         };
 
         // Commit to each element.
@@ -41,12 +41,16 @@ impl ChallengeGenerator for VerifierSetGenerator {
         let mut commitments = padded_vec
             .into_iter()
             .map(|scalar_uid| pg.generators[1] * scalar_uid * r)
-            .collect::<CommittedUids>();
+            .collect::<Vec<_>>();
         commitments.shuffle(rng);
 
-        let challenge = Scalar::random(rng);
+        let challenge = Challenge(Scalar::random(rng));
 
-        Ok((VerifierSecrets { rand: r }, commitments, challenge))
+        Ok((
+            VerifierSecrets { rand: r },
+            CommittedUids(commitments),
+            challenge,
+        ))
     }
 }
 
@@ -54,20 +58,20 @@ impl ProofVerifier for Verifier {
     fn verify_proofs(
         initial_message: &Proofs,
         final_response: &ProverFinalResponse,
-        challenge: Challenge,
-        cdd_id: RistrettoPoint,
+        challenge: &Challenge,
+        cdd_id: &CddId,
         verifier_secrets: &VerifierSecrets,
         re_committed_uids: &CommittedUids,
     ) -> Fallible<()> {
         let uid_commitment = initial_message.a - initial_message.b;
         ensure!(
-            initial_message.cdd_id_proof.generators[0] == cdd_id,
+            initial_message.cdd_id_proof.generators[0] == cdd_id.0,
             ErrorKind::CDDIdMismatchError
         );
 
         ensure!(
             verify(
-                initial_message.cdd_id_proof.clone(),
+                &initial_message.cdd_id_proof,
                 &final_response.cdd_id_proof_response,
                 &initial_message.a,
                 &challenge,
@@ -78,7 +82,7 @@ impl ProofVerifier for Verifier {
         );
         ensure!(
             verify(
-                initial_message.cdd_id_second_half_proof.clone(),
+                &initial_message.cdd_id_second_half_proof,
                 &final_response.cdd_id_second_half_proof_response,
                 &initial_message.b,
                 &challenge,
@@ -89,7 +93,7 @@ impl ProofVerifier for Verifier {
         );
         ensure!(
             verify(
-                initial_message.uid_commitment_proof.clone(),
+                &initial_message.uid_commitment_proof,
                 &final_response.uid_commitment_proof_response,
                 &uid_commitment,
                 &challenge,
@@ -101,6 +105,7 @@ impl ProofVerifier for Verifier {
 
         ensure!(
             re_committed_uids
+                .0
                 .iter()
                 .any(|element| { *element == looking_for }),
             ErrorKind::MembershipProofError
@@ -131,10 +136,20 @@ pub fn gen_random_uuids<T: RngCore + CryptoRng>(count: usize, rng: &mut T) -> Ve
 #[cfg(test)]
 mod tests {
     use crate::{
-        uuid_to_scalar, verifier::gen_random_uuids, ChallengeGenerator, VerifierSetGenerator,
-        SET_SIZE_ANONYMITY_PARAM,
+        uuid_to_scalar, verifier::gen_random_uuids, ChallengeGenerator, PrivateUids,
+        VerifierSetGenerator, SET_SIZE_ANONYMITY_PARAM,
     };
     use rand::{rngs::StdRng, SeedableRng};
+    use rand_core::{CryptoRng, RngCore};
+
+    fn make_random_uuids<T: RngCore + CryptoRng>(count: usize, rng: &mut T) -> PrivateUids {
+        PrivateUids(
+            gen_random_uuids(count, rng)
+                .into_iter()
+                .map(uuid_to_scalar)
+                .collect(),
+        )
+    }
 
     #[test]
     fn test_verifier_set_gen_length() {
@@ -143,54 +158,34 @@ mod tests {
 
         // Test original anonymity param.
         let (_, committed_uids, _) = VerifierSetGenerator::generate_committed_set_and_challenge(
-            gen_random_uuids(input_len, &mut rng)
-                .into_iter()
-                .map(uuid_to_scalar)
-                .collect(),
+            make_random_uuids(input_len, &mut rng),
             None,
             &mut rng,
         )
         .expect("Success");
 
-        assert_eq!(committed_uids.len(), SET_SIZE_ANONYMITY_PARAM);
+        assert_eq!(committed_uids.0.len(), SET_SIZE_ANONYMITY_PARAM);
 
         // Test overridden anonymity param.
         let different_anonymity_size = 20;
         let (_, committed_uids, _) = VerifierSetGenerator::generate_committed_set_and_challenge(
-            gen_random_uuids(input_len, &mut rng)
-                .into_iter()
-                .map(uuid_to_scalar)
-                .collect(),
+            make_random_uuids(input_len, &mut rng),
             Some(different_anonymity_size),
             &mut rng,
         )
         .expect("Success");
 
-        assert_eq!(committed_uids.len(), different_anonymity_size);
+        assert_eq!(committed_uids.0.len(), different_anonymity_size);
 
         // Test no padding.
         let different_anonymity_size = 5;
-        let (_, _committed_uids, _) = VerifierSetGenerator::generate_committed_set_and_challenge(
-            gen_random_uuids(input_len, &mut rng)
-                .into_iter()
-                .map(uuid_to_scalar)
-                .collect(),
+        let (_, committed_uids, _) = VerifierSetGenerator::generate_committed_set_and_challenge(
+            make_random_uuids(input_len, &mut rng),
             Some(different_anonymity_size),
             &mut rng,
         )
         .expect("Success");
 
-        let different_annonymity_size = 5;
-        let (_, committed_uids, _) = VerifierSetGenerator::generate_committed_set_and_challenge(
-            gen_random_uuids(input_len, &mut rng)
-                .into_iter()
-                .map(uuid_to_scalar)
-                .collect(),
-            Some(different_annonymity_size),
-            &mut rng,
-        )
-        .expect("Success");
-
-        assert_eq!(committed_uids.len(), input_len);
+        assert_eq!(committed_uids.0.len(), input_len);
     }
 }

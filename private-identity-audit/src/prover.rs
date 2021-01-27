@@ -8,8 +8,8 @@
 use crate::{
     errors::Fallible,
     proofs::{apply_challenge, generate_initial_message},
-    ChallengeResponder, CommittedUids, FinalProver, InitialProver, ProofGenerator, Proofs,
-    ProverFinalResponse, ProverSecrets,
+    Challenge, ChallengeResponder, CommittedUids, FinalProver, InitialProver, ProofGenerator,
+    Proofs, ProverFinalResponse, ProverSecrets,
 };
 use cryptography_core::cdd_claim::{
     compute_cdd_id, get_blinding_factor, pedersen_commitments::PedersenGenerators, CddClaimData,
@@ -32,8 +32,8 @@ impl ProofGenerator for InitialProver {
 
         // Corresponds to proving a = C^r, where C is cdd_id.
         let (cdd_id_proof_secrets, cdd_id_proof) =
-            generate_initial_message(vec![r], vec![cdd_id], rng)?;
-        let a = cdd_id * r;
+            generate_initial_message(vec![r], vec![cdd_id.0], rng)?;
+        let a = cdd_id.0 * r;
 
         // Corresponds to proving b = h^{y*r} * f^{z*r}.
         let (cdd_id_second_half_proof_secrets, cdd_id_second_half_proof) =
@@ -72,13 +72,13 @@ impl ProofGenerator for InitialProver {
 impl ChallengeResponder for FinalProver {
     fn generate_challenge_response<T: RngCore + CryptoRng>(
         secrets: &ProverSecrets,
-        committed_uids: CommittedUids,
-        challenge: Scalar,
+        committed_uids: &CommittedUids,
+        challenge: &Challenge,
         rng: &mut T,
     ) -> Fallible<(ProverFinalResponse, CommittedUids)> {
         let r = secrets.rand;
         let mut recommitted_uids: Vec<RistrettoPoint> =
-            committed_uids.into_iter().map(|e_uid| e_uid * r).collect();
+            committed_uids.0.iter().map(|e_uid| e_uid * r).collect();
         // The prover reshuffles the set. Otherwise, once the verifiers searches for the element
         // and finds it, the verifier can tell which element it was based on the position in the
         // set.
@@ -96,7 +96,7 @@ impl ChallengeResponder for FinalProver {
                 cdd_id_second_half_proof_response,
                 uid_commitment_proof_response,
             },
-            recommitted_uids,
+            CommittedUids(recommitted_uids),
         ))
     }
 }
@@ -109,7 +109,8 @@ impl ChallengeResponder for FinalProver {
 mod tests {
     use crate::{
         uuid_to_scalar, verifier::gen_random_uuids, ChallengeGenerator, ChallengeResponder,
-        FinalProver, InitialProver, ProofGenerator, ProofVerifier, Verifier, VerifierSetGenerator,
+        FinalProver, InitialProver, PrivateUids, ProofGenerator, ProofVerifier, Verifier,
+        VerifierSetGenerator,
     };
     use cryptography_core::cdd_claim::{compute_cdd_id, CddClaimData};
     use cryptography_core::curve25519_dalek::scalar::Scalar;
@@ -144,7 +145,7 @@ mod tests {
         // V -> P: Prover sends `proofs` and Verifier returns a list of 10 uids and the challenge.
         let (verifier_secrets, committed_uids, challenge) =
             VerifierSetGenerator::generate_committed_set_and_challenge(
-                private_uid_scalar_set,
+                PrivateUids(private_uid_scalar_set),
                 Some(100),
                 &mut rng,
             )
@@ -153,8 +154,8 @@ mod tests {
         // P -> V: Verifier sends the committed_uids and the challenge to the Prover.
         let (prover_response, re_committed_uids) = FinalProver::generate_challenge_response(
             &prover_secrets,
-            committed_uids,
-            challenge,
+            &committed_uids,
+            &challenge,
             &mut rng,
         )
         .unwrap();
@@ -163,8 +164,8 @@ mod tests {
         assert!(Verifier::verify_proofs(
             &proofs,
             &prover_response,
-            challenge,
-            cdd_id,
+            &challenge,
+            &cdd_id,
             &verifier_secrets,
             &re_committed_uids,
         )

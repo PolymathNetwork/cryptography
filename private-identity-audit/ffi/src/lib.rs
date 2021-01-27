@@ -14,6 +14,7 @@ use private_identity_audit::{
     Verifier, VerifierSetGenerator,
 };
 
+pub type CddId = cryptography_core::cdd_claim::CddId;
 pub type PrivateUids = private_identity_audit::PrivateUids;
 pub type CommittedUids = private_identity_audit::CommittedUids;
 pub type Challenge = private_identity_audit::Challenge;
@@ -37,7 +38,6 @@ pub struct InitialProverResults {
 pub struct VerifierSetGeneratorResults {
     pub verifier_secrets: *mut VerifierSecrets,
     pub committed_uids: *mut CommittedUids,
-    pub committed_uids_size: usize,
     pub challenge: *mut Challenge,
 }
 
@@ -235,9 +235,10 @@ pub unsafe extern "C" fn generate_committed_set_and_challenge_wrapper(
     assert!(!seed.is_null());
     assert!(seed_size == 32);
 
-    let unique_identifiers_vec: PrivateUids =
+    let unique_identifiers = private_identity_audit::PrivateUids(
         slice::from_raw_parts_mut(private_unique_identifiers, private_unique_identifiers_size)
-            .into();
+            .into(),
+    );
 
     let min_set_size: Option<usize> = match min_set_size.is_null() {
         true => None,
@@ -249,7 +250,7 @@ pub unsafe extern "C" fn generate_committed_set_and_challenge_wrapper(
     let mut rng = StdRng::from_seed(rng_seed);
 
     let result = VerifierSetGenerator::generate_committed_set_and_challenge(
-        unique_identifiers_vec,
+        unique_identifiers,
         min_set_size,
         &mut rng,
     );
@@ -262,12 +263,9 @@ pub unsafe extern "C" fn generate_committed_set_and_challenge_wrapper(
 
     let (verifier_secrets, committed_uids, challenge) = result.unwrap();
 
-    let committed_uids_size = committed_uids.len();
-
     box_alloc(VerifierSetGeneratorResults {
         verifier_secrets: box_alloc(verifier_secrets),
         committed_uids: box_alloc(committed_uids),
-        committed_uids_size,
         challenge: box_alloc(challenge),
     })
 }
@@ -289,14 +287,12 @@ pub unsafe extern "C" fn generate_committed_set_and_challenge_wrapper(
 pub unsafe extern "C" fn generate_challenge_response_wrapper(
     secrets: *const ProverSecrets,
     committed_uids: *const CommittedUids,
-    committed_uids_size: size_t,
-    challenge: *mut Challenge,
+    challenge: *const Challenge,
     seed: *const u8,
     seed_size: size_t,
 ) -> *mut FinalProverResults {
     assert!(!secrets.is_null());
     assert!(!committed_uids.is_null());
-    assert!(committed_uids_size != 0);
     assert!(!seed.is_null());
     assert!(seed_size == 32);
 
@@ -304,18 +300,14 @@ pub unsafe extern "C" fn generate_challenge_response_wrapper(
 
     let committed_uids_vec: &CommittedUids = &*committed_uids;
 
-    let challenge: Challenge = *challenge;
+    let challenge: &Challenge = &*challenge;
 
     let mut rng_seed = [0u8; 32];
     rng_seed.copy_from_slice(slice::from_raw_parts(seed, seed_size as usize));
     let mut rng = StdRng::from_seed(rng_seed);
 
-    let result = FinalProver::generate_challenge_response(
-        secrets,
-        committed_uids_vec.clone(),
-        challenge,
-        &mut rng,
-    );
+    let result =
+        FinalProver::generate_challenge_response(secrets, committed_uids_vec, challenge, &mut rng);
 
     // Log the error and return.
     if result.is_err() {
@@ -346,8 +338,8 @@ pub unsafe extern "C" fn generate_challenge_response_wrapper(
 pub unsafe extern "C" fn verify_proofs(
     initial_message: *const Proofs,
     final_response: *const ProverFinalResponse,
-    challenge: *mut Challenge,
-    cdd_id: *mut RistrettoPoint,
+    challenge: *const Challenge,
+    cdd_id: *const CddId,
     verifier_secrets: *const VerifierSecrets,
     re_committed_uids: *const CommittedUids,
 ) -> bool {
@@ -360,8 +352,8 @@ pub unsafe extern "C" fn verify_proofs(
 
     let initial_message: &Proofs = &*initial_message;
     let final_response: &ProverFinalResponse = &*final_response;
-    let challenge: Challenge = *challenge;
-    let cdd_id: RistrettoPoint = *cdd_id;
+    let challenge: &Challenge = &*challenge;
+    let cdd_id: &CddId = &*cdd_id;
     let verifier_secrets: &VerifierSecrets = &*verifier_secrets;
     let re_committed_uids: &CommittedUids = &*re_committed_uids;
 

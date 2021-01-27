@@ -14,7 +14,6 @@ crate-type = ["cdylib"]
 default = ["cbindgen", "std"]
 no_std = []
 std = [
-    # "serde_all",
     "cryptography_core/std",
     "rand_core/std",
     "rand/std",

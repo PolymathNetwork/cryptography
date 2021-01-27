@@ -9,6 +9,16 @@
 #include <stdlib.h>
 
 /**
+ * The Zero-Knowledge challenge.
+ */
+typedef struct Challenge Challenge;
+
+/**
+ * The committed and padded version of the private set of PUIS.
+ */
+typedef struct CommittedUids CommittedUids;
+
+/**
  * Holds the initial messages in the Zero-Knowledge Proofs sent by CDD Provider.
  */
 typedef struct Proofs Proofs;
@@ -37,14 +47,9 @@ typedef struct {
   Proofs *proofs;
 } InitialProverResults;
 
-typedef struct CommittedUids CommittedUids;
-
-typedef struct Challenge Challenge;
-
 typedef struct {
   VerifierSecrets *verifier_secrets;
   CommittedUids *committed_uids;
-  uintptr_t committed_uids_size;
   Challenge *challenge;
 } VerifierSetGeneratorResults;
 
@@ -53,7 +58,7 @@ typedef struct {
   CommittedUids *committed_uids;
 } FinalProverResults;
 
-typedef struct RistrettoPoint RistrettoPoint;
+typedef struct CddId CddId;
 
 /**
  * Convert a Uuid byte array into a scalar object.
@@ -165,8 +170,7 @@ VerifierSetGeneratorResults *generate_committed_set_and_challenge_wrapper(Scalar
  */
 FinalProverResults *generate_challenge_response_wrapper(const ProverSecrets *secrets,
                                                         const CommittedUids *committed_uids,
-                                                        size_t committed_uids_size,
-                                                        Challenge *challenge,
+                                                        const Challenge *challenge,
                                                         const uint8_t *seed,
                                                         size_t seed_size);
 
@@ -182,8 +186,8 @@ FinalProverResults *generate_challenge_response_wrapper(const ProverSecrets *sec
  */
 bool verify_proofs(const Proofs *initial_message,
                    const ProverFinalResponse *final_response,
-                   Challenge *challenge,
-                   RistrettoPoint *cdd_id,
+                   const Challenge *challenge,
+                   const CddId *cdd_id,
                    const VerifierSecrets *verifier_secrets,
                    const CommittedUids *re_committed_uids);
 

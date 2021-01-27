@@ -67,6 +67,9 @@ fn slice_to_scalar(data: &[u8]) -> Scalar {
 /// The data needed to generate a CDD ID.
 pub type CddClaimData = cryptography_core::cdd_claim::CddClaimData;
 
+/// The CDD ID type.
+pub type CddId = cryptography_core::cdd_claim::CddId;
+
 /// The data needed to generate a SCOPE ID.
 #[derive(Debug, Copy, Clone)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
@@ -129,7 +132,7 @@ fn generate_pedersen_commit(a: Scalar, b: Scalar) -> RistrettoPoint {
 ///
 /// # Output
 /// The Pedersen commitment result.
-pub fn compute_cdd_id(cdd_claim: &CddClaimData) -> RistrettoPoint {
+pub fn compute_cdd_id(cdd_claim: &CddClaimData) -> CddId {
     cryptography_core::cdd_claim::compute_cdd_id(cdd_claim)
 }
 
@@ -221,7 +224,7 @@ impl ProofPublicKey {
     /// * `scope_id`: the investor's SCOPE_ID.
     /// * `scope_did`: the scope DID
     pub fn new(
-        cdd_id: RistrettoPoint,
+        cdd_id: CddId,
         investor_did: &[u8],
         scope_id: RistrettoPoint,
         scope_did: &[u8],
@@ -230,7 +233,7 @@ impl ProofPublicKey {
         let scope_did = slice_to_scalar(scope_did);
         let pg = PedersenGenerators::default();
 
-        let cdd_label_prime = pg.label_prime(cdd_id, investor_did);
+        let cdd_label_prime = pg.label_prime(cdd_id.0, investor_did);
         let scope_label_prime = pg.label_prime(scope_id, scope_did);
         let diff = cdd_label_prime - scope_label_prime;
 

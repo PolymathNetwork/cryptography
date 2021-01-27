@@ -9,8 +9,8 @@
 extern crate alloc;
 
 pub use claim_proofs::{
-    build_scope_claim_proof_data, compute_cdd_id, compute_scope_id, CddClaimData, ProofKeyPair,
-    ProofPublicKey, ScopeClaimData, ScopeClaimProofData,
+    build_scope_claim_proof_data, compute_cdd_id, compute_scope_id, CddClaimData, CddId,
+    ProofKeyPair, ProofPublicKey, ScopeClaimData, ScopeClaimProofData,
 };
 pub use curve25519_dalek::{self, ristretto::CompressedRistretto, scalar::Scalar};
 use rand_core::{CryptoRng, RngCore};

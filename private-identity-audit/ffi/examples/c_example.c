@@ -13,7 +13,7 @@
  *         `CddClaimData` object, created by this API.
  * Caller is responsible for deallocating memory after use.
  */
-extern RistrettoPoint *compute_cdd_id_wrapper(const CddClaimData *cdd_claim);
+extern CddId *compute_cdd_id_wrapper(const CddClaimData *cdd_claim);
 
 int main(void) {
     uint8_t investor_did[32] = {0x49, 0x99, 0x52, 0x43, 0x74, 0x8c, 0x4a, 0xe7,
@@ -54,7 +54,7 @@ int main(void) {
 
     // Set up on Prover side:
     CddClaimData *cdd_claim = cdd_claim_data_new(investor_did, investor_did_size, investor_unique_id1, investor_unique_id_size1);
-    RistrettoPoint *cdd_id = compute_cdd_id_wrapper(cdd_claim);
+    CddId *cdd_id = compute_cdd_id_wrapper(cdd_claim);
 
     // Prover makes the initial proof:
     InitialProverResults *initial_prover_results = generate_initial_proofs_wrapper(cdd_claim, seed1, seed_size1);
@@ -66,7 +66,7 @@ int main(void) {
 
     // Prover makes final proofs:
     FinalProverResults *final_prover_results = generate_challenge_response_wrapper(initial_prover_results->prover_secrets,
-        verifier_set_generator_results->committed_uids, verifier_set_generator_results->committed_uids_size, verifier_set_generator_results->challenge, seed3, seed_size3);
+        verifier_set_generator_results->committed_uids, verifier_set_generator_results->challenge, seed3, seed_size3);
 
     // Verifier/PUIS verifies the membership proof:
     bool verification_result = verify_proofs(initial_prover_results->proofs, final_prover_results->prover_final_response, verifier_set_generator_results->challenge, cdd_id,

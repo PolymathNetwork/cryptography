@@ -30,7 +30,7 @@ int main(void) {
 
     // Create Proof.
     Signature *sig = generate_id_match_proof_wrapper(prover, message, message_size);
-    RistrettoPoint *cdd_id = compute_cdd_id_wrapper(cdd_claim);
+    CddId *cdd_id = compute_cdd_id_wrapper(cdd_claim);
     RistrettoPoint *scope_id = compute_scope_id_wrapper(scope_claim);
 
     // Set up on the Verifier side:

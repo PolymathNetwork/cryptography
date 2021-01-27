@@ -11,16 +11,10 @@ use confidential_identity::{
     build_scope_claim_proof_data, compute_cdd_id, compute_scope_id, mocked, CddClaimData,
     ProofKeyPair, ScopeClaimData,
 };
-use curve25519_dalek::ristretto::RistrettoPoint;
 use rand::{rngs::StdRng, SeedableRng};
 use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
 use structopt::StructOpt;
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct CddId {
-    pub cdd_id: RistrettoPoint,
-}
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct RawCddClaimData {
@@ -202,8 +196,7 @@ fn process_create_cdd_id(cfg: CreateCDDIdInfo) {
     let cdd_id = compute_cdd_id(&cdd_claim);
 
     // => CDD provider includes the CDD Id in their claim and submits it to the PolyMesh.
-    let packaged_cdd_id = CddId { cdd_id };
-    let cdd_id_str = serde_json::to_string(&packaged_cdd_id)
+    let cdd_id_str = serde_json::to_string(&cdd_id)
         .unwrap_or_else(|error| panic!("Failed to serialize the CDD Id: {}", error));
 
     if cfg.verbose {

@@ -11,5 +11,6 @@ serde = { version = "1.0.105", features = ["derive"] }
 serde_bytes = { version = "0.11", default-features = false, features = ["alloc"]}
 
 # Crypto
+confidential_identity = { path = "../../" }
 curve25519-dalek = { git = "https://github.com/PolymathNetwork/curve25519-dalek.git", branch = "v2-packed-simd", default-features = false, features = ["nightly", "u64_backend"] }
 blake2 = { version = "0.9.0", default-features = false }

@@ -1,10 +1,11 @@
 use blake2::{Blake2s, Digest};
 use confidential_identity::{
-    build_scope_claim_proof_data, compute_cdd_id, compute_scope_id, mocked, CddClaimData,
+    build_scope_claim_proof_data, compute_cdd_id, compute_scope_id, mocked, CddClaimData, CddId,
     ProofKeyPair, ScopeClaimData,
 };
 use curve25519_dalek::ristretto::RistrettoPoint;
 use serde::{Deserialize, Serialize};
+
 use wasm_bindgen::prelude::*;
 
 type InvestorDID = [u8; 32];
@@ -14,11 +15,6 @@ pub type ScopeDID = [u8; 12];
 
 // Unique ID is a UUIDv4.
 type UniqueID = [u8; 16];
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct CddId {
-    pub cdd_id: RistrettoPoint,
-}
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct RawCddClaimData {
@@ -34,7 +30,7 @@ pub struct RawScopeClaimData {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Proof {
-    pub cdd_id: RistrettoPoint,
+    pub cdd_id: CddId,
     pub investor_did: InvestorDID,
     pub scope_id: RistrettoPoint,
     pub scope_did: ScopeDID,
@@ -69,8 +65,7 @@ pub fn process_create_cdd_id(cdd_claim: String) -> Result<String, JsValue> {
 
     let cdd_id = compute_cdd_id(&cdd_claim);
 
-    let packaged_cdd_id = CddId { cdd_id };
-    let cdd_id_str = serde_json::to_string(&packaged_cdd_id)
+    let cdd_id_str = serde_json::to_string(&cdd_id)
         .map_err(|error| format!("Failed to serialize the CDD Id: {}", error))?;
 
     Ok(cdd_id_str)

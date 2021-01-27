@@ -14,6 +14,7 @@ pub type ScopeClaimProofData = confidential_identity::ScopeClaimProofData;
 pub type ProofPublicKey = confidential_identity::ProofPublicKey;
 pub type ProofKeyPair = confidential_identity::ProofKeyPair;
 pub type CddClaimData = confidential_identity::CddClaimData;
+pub type CddId = confidential_identity::CddId;
 pub type Signature = schnorrkel::Signature;
 pub type RistrettoPoint = curve25519_dalek::ristretto::RistrettoPoint;
 
@@ -126,7 +127,7 @@ pub unsafe extern "C" fn scope_claim_proof_data_free(ptr: *mut ScopeClaimProofDa
 /// `compute_cdd_id_wrapper()` and `compute_scope_id_wrapper()` API.
 #[no_mangle]
 pub unsafe extern "C" fn proof_public_key_new(
-    cdd_id: *mut RistrettoPoint,
+    cdd_id: *mut CddId,
     investor_did: *const u8,
     investor_did_size: size_t,
     scope_id: *mut RistrettoPoint,
@@ -138,7 +139,7 @@ pub unsafe extern "C" fn proof_public_key_new(
     assert!(!scope_id.is_null());
     assert!(!scope_did.is_null());
 
-    let cdd_id: RistrettoPoint = *cdd_id;
+    let cdd_id: CddId = *cdd_id;
     let investor_did = slice::from_raw_parts(investor_did, investor_did_size as usize);
     let scope_id: RistrettoPoint = *scope_id;
     let scope_did = slice::from_raw_parts(scope_did, scope_did_size as usize);
@@ -206,9 +207,7 @@ pub unsafe extern "C" fn build_scope_claim_proof_data_wrapper(
 /// `CddClaimData` object, created by this API.
 /// Caller is responsible for deallocating memory after use.
 #[no_mangle]
-pub unsafe extern "C" fn compute_cdd_id_wrapper(
-    cdd_claim: *const CddClaimData,
-) -> *mut RistrettoPoint {
+pub unsafe extern "C" fn compute_cdd_id_wrapper(cdd_claim: *const CddClaimData) -> *mut CddId {
     assert!(!cdd_claim.is_null());
 
     let cdd_claim: CddClaimData = *cdd_claim;
