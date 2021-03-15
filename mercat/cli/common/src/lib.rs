@@ -110,13 +110,15 @@ impl CoreTransaction {
 
     /// Returns true for outgoing transactions.
     fn decreases_account_balance(&self) -> bool {
-        matches!(self,
-        CoreTransaction::TransferInit {
-            tx: _,
-            sender: _,
-            ordering_state: _,
-            tx_id: _,
-        })
+        matches!(
+            self,
+            CoreTransaction::TransferInit {
+                tx: _,
+                sender: _,
+                ordering_state: _,
+                tx_id: _,
+            }
+        )
     }
 
     pub fn ordering_state(&self) -> OrderingState {
